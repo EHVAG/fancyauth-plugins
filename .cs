@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 using Fancyauth.APIUtil;
@@ -12,7 +13,7 @@ namespace Fancyauth.Plugins.Builtin
         public static int Next(this RandomNumberGenerator rng, int to) {
             var bytes = new byte[4];
             rng.GetBytes(bytes);
-            return (bytes[0] << 24 + bytes[1] << 16 + bytes[2] << 8 + bytes[3]) % to;
+            return BitConverter.ToInt32(bytes, 0) % to;
         }
     }
 
@@ -21,20 +22,27 @@ namespace Fancyauth.Plugins.Builtin
         private static readonly string[] PREFIXES = {"[Rude]", "[Ruderer]", "[Rüdiger]", "[Level Java]"};
         private static readonly string[] REASONS = {"Could you please be more polite?", "Your kindness could be increased a little.", "FUCK YOU!!! is not polite."};
 
-        private Dictionary<int, int> RudeLevels = new Dictionary<int, int>();
+        private ConcurrentDictionary<int, int> RudeLevels = new ConcurrentDictionary<int, int>();
         private RandomNumberGenerator Rng = RandomNumberGenerator.Create();
 
         [ContextCallback("Rude")]
-        public async Task RudeUser(API.IUser from, API.IUserShim target)
+        public async Task RudeUser(IUser from, IUserShim target)
         {
             var user = await target.Load();
             var id = user.UserId;
-            var level = RudeLevels[id];
-            level++;
+            int level;
+            if (!RudeLevels.TryGetValue(id, out level))
+                level = 0;
+            else
+                level++;
             if (level >= PREFIXES.Length) {
-                await user.Kick(REASONS[Rng.Next(REASONS.Length)]);
+                var reason = REASONS[Rng.Next(REASONS.Length)];
+                if (!RudeLevels.TryRemove(id, out level))
+                    reason = "This should not have happened. Please report to your local Admin. (really, this is a bug in the plugin)";
+                await user.Kick(reason);
             } else {
                 user.Name = PREFIXES[level];
+                RudeLevels.AddOrUpdate(id, _ => 0, (_,i) => i+1);
                 await user.SaveChanges();
             }
         }
