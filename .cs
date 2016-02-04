@@ -12,7 +12,7 @@ namespace Fancyauth.Plugins.Builtin
         private static readonly string[] REASONS = {"Could you please be more polite?", "Your kindness could be increased a little.", "FUCK YOU!!! is not polite."};
 
         private Dictionary<int, int> RudeLevels = new Dictionary<int, int>();
-        private SecureRandom Rng = new Random();
+        private RandomNumberGenerator Rng = new RandomNumberGenerator();
 
         [ContextCallback("Rude")]
         public async Task RudeUser(API.IUser from, API.IUserShim target)
@@ -29,3 +29,4 @@ namespace Fancyauth.Plugins.Builtin
         }
     }
 }
+
