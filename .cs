@@ -29,11 +29,10 @@ namespace Fancyauth.Plugins.Builtin
         public async Task RudeUser(IUser from, IUserShim target)
         {
             var user = await target.Load();
-            var id = user.UserId;
-            int level = RudeLevels.AddOrUpdate(id, 0, (_, i) => i + 1);
+            var level = RudeLevels.AddOrUpdate(user.UserId, 0, (_, i) => i + 1);
             if (level >= PREFIXES.Length)
             {
-                RudeLevels.TryRemove(id, out level);
+                RudeLevels.TryRemove(user.UserId, out level);
                 await user.Kick(REASONS[Rng.Next(REASONS.Length)]);
             }
             else
