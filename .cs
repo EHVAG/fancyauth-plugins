@@ -30,11 +30,14 @@ namespace Fancyauth.Plugins.Builtin
         {
             var user = await target.Load();
             var id = user.UserId;
-            int level = RudeLevels.AddOrUpdate(id, 0, (_,i) => i+1);
-            if (level >= PREFIXES.Length) {
-                RudeLevels.TryRemove(id, out level)
+            int level = RudeLevels.AddOrUpdate(id, 0, (_, i) => i + 1);
+            if (level >= PREFIXES.Length)
+            {
+                RudeLevels.TryRemove(id, out level);
                 await user.Kick(REASONS[Rng.Next(REASONS.Length)]);
-            } else {
+            }
+            else
+            {
                 user.Name = PREFIXES[level];
                 await user.SaveChanges();
             }
