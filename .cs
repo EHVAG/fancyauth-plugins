@@ -30,19 +30,12 @@ namespace Fancyauth.Plugins.Builtin
         {
             var user = await target.Load();
             var id = user.UserId;
-            int level;
-            if (!RudeLevels.TryGetValue(id, out level))
-                level = 0;
-            else
-                level++;
+            int level = RudeLevels.AddOrUpdate(id, 0, (_,i) => i+1);
             if (level >= PREFIXES.Length) {
-                var reason = REASONS[Rng.Next(REASONS.Length)];
-                if (!RudeLevels.TryRemove(id, out level))
-                    reason = "This should not have happened. Please report to your local Admin. (really, this is a bug in the plugin)";
-                await user.Kick(reason);
+                RudeLevels.TryRemove(id, out level)
+                await user.Kick(REASONS[Rng.Next(REASONS.Length)]);
             } else {
                 user.Name = PREFIXES[level];
-                RudeLevels.AddOrUpdate(id, _ => 0, (_,i) => i+1);
                 await user.SaveChanges();
             }
         }
