@@ -34,16 +34,20 @@ namespace Fancyauth.Plugins.Builtin
             lock (Rudes)
             {
                 // if actor rudes himself or has already ruded in last Minute
-                actorRuded = actor.UserId == target.UserId
-                    || (from rude in Rudes
-                        where rude.ActorId == actor.UserId
-                        where rude.ActualTargetId != -1
-                        where rude.Timestamp > DateTime.Now.AddMinutes(-1)
-                        select rude).Any();
+                actorRuded = (actor.UserId == target.UserId)
+                    || Rudes.Where(r => r.ActorId == actor.UserId)
+                        .Where(r => r.ActualTargetId != null)
+                        .Any(r => r.Timestamp > DateTime.Now.AddMinutes(-1));
 
-                var rudeEntity = new RudeEntity{ Id = -1, ActorId = actor.UserId,
-                        TargetId = target.UserId, ActualTargetId = -1,
-                        Effectiveness = -1, Timestamp = DateTime.Now };
+                var rudeEntity = new RudeEntity
+                {
+                    Id = -1,
+                    ActorId = actor.UserId,
+                    TargetId = target.UserId,
+                    ActualTargetId = null,
+                    Effectiveness = -1,
+                    Timestamp = DateTime.Now,
+                };
 
                 // if actor already ruded in last minute, he will be ruded instead of target
                 if (actorRuded)
@@ -57,11 +61,8 @@ namespace Fancyauth.Plugins.Builtin
                 Rudes.Add(rudeEntity);
 
                 // get all rudes in the last 2 hours of target
-                targetRudes =
-                    (from rude in Rudes
-                    where rude.TargetId == target.UserId
-                    where rude.Timestamp > DateTime.Now.AddHours(-2)
-                    select rude).Count();
+                targetRudes = Rudes.Where(r => r.TargetId == target.UserId)
+                        .Count(r => r.Timestamp > DateTime.Now.AddHours(-2));
             }
 
             // The last message in PREFIXES is for users ruding themselfs when
@@ -84,10 +85,11 @@ namespace Fancyauth.Plugins.Builtin
             }
         }
 
-        private class RudeEntity {
+        private class RudeEntity
+        {
             public int Id { get; set; }
             public int TargetId { get; set; }
-            public int ActualTargetId { get; set; }
+            public int? ActualTargetId { get; set; }
             public int ActorId { get; set; }
             public float Effectiveness { get; set; }
             public DateTime Timestamp { get; set; }
