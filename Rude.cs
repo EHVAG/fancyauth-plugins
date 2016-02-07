@@ -111,11 +111,15 @@ namespace Fancyauth.Plugins.Builtin
                 }
                 else
                 {
-                    var lastActiveRude = targetInRudesQuery.Max(r => r.Timestamp);
-                    reudigLevel = targetInQuery
-                            // count queries kicking him since the last active rude
-                            .Where(r => r.Duration == null)
-                            .Count(r => r.Timestamp > lastActiveRude);
+                    if (targetInRudes >= PREFIXES.Length) {
+                        var lastActiveRude = targetInRudesQuery.Max(r => r.Timestamp);
+                        reudigLevel = targetInQuery
+                                // count queries kicking him since the last active rude
+                                .Where(r => r.Duration == null)
+                                .Count(r => r.Timestamp > lastActiveRude);
+                    }
+                    else
+                        reudigLevel = 0;
 
                     var actorOutRudes = actorOutRudeQuery.Count();
                     var medianQuery =
