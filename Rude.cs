@@ -157,7 +157,7 @@ namespace Fancyauth.Plugins.Builtin
                 }
                 await target.SaveChanges();
             }
-            await actor.Send
+            await actor.SendMessage("Ruded with: " + rudeEntity.Duration);
         }
 
         private class RudeEntity
