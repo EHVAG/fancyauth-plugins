@@ -67,7 +67,7 @@ namespace Fancyauth.Plugins.Builtin
                 Timestamp = DateTimeOffset.Now,
             };
             int targetInRudes;
-            int reudigLevel;
+            //int reudigLevel;
             // if the actor ruded himself, he won't be kicked
             bool kick = false;
             lock (Rudes)
@@ -111,16 +111,16 @@ namespace Fancyauth.Plugins.Builtin
                 }
                 else
                 {
-                    if (targetInRudes >= PREFIXES.Length)
-                    {
-                        var lastActiveRude = targetInRudesQuery.Max(r => r.Timestamp);
-                        reudigLevel = targetInQuery
-                                // count queries kicking him since the last active rude
-                                .Where(r => r.Duration == null)
-                                .Count(r => r.Timestamp > lastActiveRude);
-                    }
-                    else
-                        reudigLevel = 0;
+                    //if (targetInRudes >= PREFIXES.Length)
+                    //{
+                        //var lastActiveRude = targetInRudesQuery.Max(r => r.Timestamp);
+                        //reudigLevel = targetInQuery
+                                //// count queries kicking him since the last active rude
+                                //.Where(r => r.Duration == null)
+                                //.Count(r => r.Timestamp > lastActiveRude);
+                    //}
+                    //else
+                        //reudigLevel = 0;
 
                     var actorOutRudes = actorOutRudeQuery.Count();
                     var medianQuery =
@@ -151,10 +151,10 @@ namespace Fancyauth.Plugins.Builtin
                 if (name.Contains("]"))
                     name = name.Substring(target.Name.IndexOf("]") + 2);
                 target.Name = PREFIXES[targetInRudes] + " " + name;
-                if (reudigLevel > 0)
-                {
-                    target.Name.Insert(1, reudigLevel.ToString());
-                }
+                //if (reudigLevel > 0)
+                //{
+                    //target.Name.Insert(1, reudigLevel.ToString());
+                //}
                 await target.SaveChanges();
             }
             await actor.SendMessage("Ruded with: " + rudeEntity.Duration);
