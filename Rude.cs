@@ -104,7 +104,7 @@ namespace Fancyauth.Plugins.Builtin
                         .Where(r => r.Timestamp + r.Duration >= DateTimeOffset.Now);
                 // get all active rudes on target
                 targetInRudes = targetInRudesQuery.Count();
-                if (targetInRudes > PREFIXES.Length && !punishActor)
+                if (targetInRudes >= PREFIXES.Length && !punishActor)
                 {
                     kick = true;
                     rudeEntity.Duration = null;
@@ -133,7 +133,7 @@ namespace Fancyauth.Plugins.Builtin
                     double durationFactor = actorOutRudes == 0 ? 2 : median.Value / actorOutRudes;
                     durationFactor = Math.Max(durationFactor, 0.25);
                     durationFactor = Math.Min(durationFactor, 2);
-                    durationFactor *= rng.NextDouble() * (targetInRudes + reudigLevel);
+                    durationFactor *= rng.NextDouble() * targetInRudes;
                     rudeEntity.Duration = TimeSpan.FromHours(durationFactor * 2);
                 }
 
@@ -147,18 +147,17 @@ namespace Fancyauth.Plugins.Builtin
             }
             else
             {
-                var targetRudes = targetInRudes + reudigLevel;
                 var name = target.Name;
                 if (name.Contains("]"))
                     name = name.Substring(target.Name.IndexOf("]") + 2);
-                var i = Math.Min(targetRudes - 1, PREFIXES.Length - 1);
-                target.Name = PREFIXES[i] + " " + name;
+                target.Name = PREFIXES[targetInRudes] + " " + name;
                 if (reudigLevel > 0)
                 {
                     target.Name.Insert(1, reudigLevel.ToString());
                 }
                 await target.SaveChanges();
             }
+            await actor.Send
         }
 
         private class RudeEntity
