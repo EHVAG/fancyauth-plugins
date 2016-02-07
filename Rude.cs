@@ -66,10 +66,10 @@ namespace Fancyauth.Plugins.Builtin
                 ActualTargetId = null,
                 Timestamp = DateTimeOffset.Now,
             };
-            bool actorPunished;
+            bool punishActor;
             int targetInRudes;
             int reudigLevel;
-            bool kick;
+            bool kick = false;
             lock (Rudes)
             {
                 var oneYear = DateTimeOffset.Now.AddYears(-1);
@@ -77,29 +77,26 @@ namespace Fancyauth.Plugins.Builtin
                         .Where(r => r.ActualTargetId != null);
 
                 // if actor rudes himself or has already ruded in last Minute
-                actorPunished = actorOutRudeQuery.Where(r => r.Duration != null)
+                punishActor = actorOutRudeQuery.Where(r => r.Duration != null)
                         .Any(r => r.Timestamp > DateTime.Now.AddMinutes(-1));
 
                 // if actor already ruded in last minute, he will be ruded instead of target
-                if (actorPunished)
+                if (punishActor)
                 {
                     rudeEntity.ActualTargetId = rudeEntity.TargetId;
                     rudeEntity.TargetId = actor.UserId;
                     // if ruder ruded himself (accidently or not) he will be the new target
                     target = actor;
                 }
-                // if actor rudes himself
-                else if (actor.UserId == target.UserId)
-                    target = actor;
 
                 var targetQuery = Rudes.Where(r => r.TargetId == target.UserId);
                 var targetRudesQuery = targetQuery.Where(r => r.Duration != null)
                         .Where(r => r.Timestamp + r.Duration > DateTimeOffset.Now);
                 // get all active rudes on target
                 targetInRudes = targetRudesQuery.Count();
-                if (targetInRudes > PREFIXES.Length && !actorPunished)
+                if (targetInRudes > PREFIXES.Length && !punishActor)
                 {
-                    kick= true;
+                    kick = true;
                     rudeEntity.Duration = null;
                 }
                 else
