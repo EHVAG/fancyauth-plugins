@@ -101,7 +101,7 @@ namespace Fancyauth.Plugins.Builtin
                         // take only rudes, which have not kicked the target
                         .Where(r => r.Duration != null)
                         // and which are still active
-                        .Where(r => r.Timestamp + r.Duration > DateTimeOffset.Now);
+                        .Where(r => r.Timestamp + r.Duration >= DateTimeOffset.Now);
                 // get all active rudes on target
                 targetInRudes = targetInRudesQuery.Count();
                 if (targetInRudes > PREFIXES.Length && !punishActor)
@@ -117,10 +117,10 @@ namespace Fancyauth.Plugins.Builtin
                             .Where(r => r.Duration == null)
                             .Count(r => r.Timestamp > lastActiveRude);
 
-                    var yearQuery = Rudes.Where(r => r.Timestamp > oneYear);
                     var actorOutRudes = actorOutRudeQuery.Count();
                     var medianQuery =
-                            from r in yearQuery
+                            from r in Rudes
+                            where r.Timestamp > oneYear
                             group Math.Log((r.Timestamp - oneYear).TotalMinutes) by r.ActorId into g
                             select g.Sum();
                     var median = medianQuery.Median();
