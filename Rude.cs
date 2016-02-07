@@ -102,16 +102,16 @@ namespace Fancyauth.Plugins.Builtin
                         .Where(r => r.Duration != null)
                         // and which are still active
                         .Where(r => r.Timestamp + r.Duration >= DateTimeOffset.Now);
-                // get all active rudes on target
-                targetInRudes = targetInRudesQuery.Count();
-                if (targetInRudes >= PREFIXES.Length && !punishActor)
+                // get all active rudes on target and add current rude
+                targetInRudes = targetInRudesQuery.Count() + 1;
+                if (targetInRudes > PREFIXES.Length && !punishActor)
                 {
                     kick = true;
                     rudeEntity.Duration = null;
                 }
                 else
                 {
-                    //if (targetInRudes >= PREFIXES.Length)
+                    //if (targetInRudes > PREFIXES.Length)
                     //{
                         //var lastActiveRude = targetInRudesQuery.Max(r => r.Timestamp);
                         //reudigLevel = targetInQuery
@@ -133,7 +133,7 @@ namespace Fancyauth.Plugins.Builtin
                     double durationFactor = actorOutRudes == 0 ? 2 : median.Value / actorOutRudes;
                     durationFactor = Math.Max(durationFactor, 0.25);
                     durationFactor = Math.Min(durationFactor, 2);
-                    durationFactor *= rng.NextDouble() * (targetInRudes + 1);
+                    durationFactor *= rng.NextDouble() * targetInRudes;
                     rudeEntity.Duration = TimeSpan.FromHours(durationFactor * 2);
                 }
 
