@@ -133,9 +133,8 @@ namespace Fancyauth.Plugins.Builtin
                     double durationFactor = actorOutRudes == 0 ? 2 : median.Value / actorOutRudes;
                     durationFactor = Math.Max(durationFactor, 0.25);
                     durationFactor = Math.Min(durationFactor, 2);
-                    var duration = rng.NextDouble() * (targetInRudes + reudigLevel);
-                    duration *= durationFactor * 120;
-                    rudeEntity.Duration = new TimeSpan(0, (int)duration, 0);
+                    durationFactor *= rng.NextDouble() * (targetInRudes + reudigLevel);
+                    rudeEntity.Duration = TimeSpan.FromHours(durationFactor * 2);
                 }
 
                 // add rude
