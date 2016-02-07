@@ -111,7 +111,8 @@ namespace Fancyauth.Plugins.Builtin
                 }
                 else
                 {
-                    if (targetInRudes >= PREFIXES.Length) {
+                    if (targetInRudes >= PREFIXES.Length)
+                    {
                         var lastActiveRude = targetInRudesQuery.Max(r => r.Timestamp);
                         reudigLevel = targetInQuery
                                 // count queries kicking him since the last active rude
