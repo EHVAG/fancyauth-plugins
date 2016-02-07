@@ -66,18 +66,25 @@ namespace Fancyauth.Plugins.Builtin
                 ActualTargetId = null,
                 Timestamp = DateTimeOffset.Now,
             };
-            bool punishActor;
             int targetInRudes;
             int reudigLevel;
+            // if the actor ruded himself, he won't be kicked
             bool kick = false;
             lock (Rudes)
             {
                 var oneYear = DateTimeOffset.Now.AddYears(-1);
-                var actorOutRudeQuery = Rudes.Where(r => r.ActorId == actor.UserId)
-                        .Where(r => r.ActualTargetId != null);
+                var actorOutRudeQuery = Rudes
+                        // get all rudes which actor has done
+                        .Where(r => r.ActorId == actor.UserId)
+                        // and where he didn't rude himself by ruding too often
+                        .Where(r => r.ActualTargetId == null);
 
                 // if actor rudes himself or has already ruded in last Minute
-                punishActor = actorOutRudeQuery.Where(r => r.Duration != null)
+                bool punishActor = actorOutRudeQuery
+                        // take all rudes, where the actor hasn't kicked someone
+                        //  (kicking by ruding does not have a cooldown)
+                        .Where(r => r.Duration != null)
+                        // test, if the actor has ruded anyone in last minute
                         .Any(r => r.Timestamp > DateTime.Now.AddMinutes(-1));
 
                 // if actor already ruded in last minute, he will be ruded instead of target
@@ -89,11 +96,14 @@ namespace Fancyauth.Plugins.Builtin
                     target = actor;
                 }
 
-                var targetQuery = Rudes.Where(r => r.TargetId == target.UserId);
-                var targetRudesQuery = targetQuery.Where(r => r.Duration != null)
+                var targetInQuery = Rudes.Where(r => r.TargetId == target.UserId);
+                var targetInRudesQuery = targetInQuery
+                        // take only rudes, which have not kicked the target
+                        .Where(r => r.Duration != null)
+                        // and which are still active
                         .Where(r => r.Timestamp + r.Duration > DateTimeOffset.Now);
                 // get all active rudes on target
-                targetInRudes = targetRudesQuery.Count();
+                targetInRudes = targetInRudesQuery.Count();
                 if (targetInRudes > PREFIXES.Length && !punishActor)
                 {
                     kick = true;
@@ -101,17 +111,18 @@ namespace Fancyauth.Plugins.Builtin
                 }
                 else
                 {
-                    var lastActiveRude = targetRudesQuery.Max(r => r.Timestamp);
-                    reudigLevel = targetQuery.Where(r => r.Duration == null)
+                    var lastActiveRude = targetInRudesQuery.Max(r => r.Timestamp);
+                    reudigLevel = targetInQuery
+                            // count queries kicking him since the last active rude
+                            .Where(r => r.Duration == null)
                             .Count(r => r.Timestamp > lastActiveRude);
 
-                    // get factors
                     var yearQuery = Rudes.Where(r => r.Timestamp > oneYear);
                     var actorOutRudes = actorOutRudeQuery.Count();
-                    var medianQuery = from r in yearQuery
-                                group Math.Log((r.Timestamp - oneYear).TotalMinutes)
-                                    by r.ActorId into g
-                                    select g.Sum();
+                    var medianQuery =
+                            from r in yearQuery
+                            group Math.Log((r.Timestamp - oneYear).TotalMinutes) by r.ActorId into g
+                            select g.Sum();
                     var median = medianQuery.Median();
 
                     double durationFactor = actorOutRudes == 0 ? 2 : median.Value / actorOutRudes;
@@ -126,7 +137,6 @@ namespace Fancyauth.Plugins.Builtin
                 Rudes.Add(rudeEntity);
             }
 
-            // if the actor ruded himself, he won't be kicked
             if (kick)
             {
                 await target.Kick(REASONS[rng.Next(REASONS.Length)]);
