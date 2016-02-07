@@ -67,7 +67,6 @@ namespace Fancyauth.Plugins.Builtin
                 Timestamp = DateTimeOffset.Now,
             };
             int targetInRudes;
-            //int reudigLevel;
             // if the actor ruded himself, he won't be kicked
             bool kick = false;
             lock (Rudes)
@@ -92,18 +91,12 @@ namespace Fancyauth.Plugins.Builtin
                 {
                     rudeEntity.ActualTargetId = rudeEntity.TargetId;
                     rudeEntity.TargetId = actor.UserId;
-                    // if ruder ruded himself (accidently or not) he will be the new target
+                    // he will be the new target
                     target = actor;
                 }
 
-                var targetInQuery = Rudes.Where(r => r.TargetId == target.UserId);
-                var targetInRudesQuery = targetInQuery
-                        // take only rudes, which have not kicked the target
-                        .Where(r => r.Duration != null)
-                        // and which are still active
-                        .Where(r => r.Timestamp + r.Duration >= DateTimeOffset.Now);
-                // get all active rudes on target and add current rude
-                targetInRudes = targetInRudesQuery.Count() + 1;
+                // get active rudes on target and add current rude
+                targetInRudes = GetActiveInRudes(target.UserId).Count() + 1;
                 if (targetInRudes > PREFIXES.Length && !punishActor)
                 {
                     kick = true;
@@ -111,17 +104,6 @@ namespace Fancyauth.Plugins.Builtin
                 }
                 else
                 {
-                    //if (targetInRudes > PREFIXES.Length)
-                    //{
-                        //var lastActiveRude = targetInRudesQuery.Max(r => r.Timestamp);
-                        //reudigLevel = targetInQuery
-                                //// count queries kicking him since the last active rude
-                                //.Where(r => r.Duration == null)
-                                //.Count(r => r.Timestamp > lastActiveRude);
-                    //}
-                    //else
-                        //reudigLevel = 0;
-
                     var actorOutRudes = actorOutRudeQuery.Count();
                     var medianQuery =
                             from r in Rudes
@@ -134,7 +116,8 @@ namespace Fancyauth.Plugins.Builtin
                     durationFactor = Math.Max(durationFactor, 0.25);
                     durationFactor = Math.Min(durationFactor, 2);
                     durationFactor *= rng.NextDouble() * targetInRudes;
-                    rudeEntity.Duration = TimeSpan.FromHours(durationFactor * 2);
+                    var duration = TimeSpan.FromHours(durationFactor * 2).Ticks;
+                    rudeEntity.Duration = TimeSpan.FromTicks(Math.Min(duration, TimeSpan.FromDays(1).Ticks));
                 }
 
                 // add rude
@@ -150,14 +133,81 @@ namespace Fancyauth.Plugins.Builtin
                 var name = target.Name;
                 if (name.Contains("]"))
                     name = name.Substring(target.Name.IndexOf("]") + 2);
-                target.Name = PREFIXES[targetInRudes] + " " + name;
-                //if (reudigLevel > 0)
-                //{
-                    //target.Name.Insert(1, reudigLevel.ToString());
-                //}
+                // if actor gets punished, it is a completely valid rude on himself
+                //  allowing an increase of targetInRudes to a value over 2
+                var index = Math.Min(targetInRudes, 2);
+                target.Name = PREFIXES[index] + " " + name;
                 await target.SaveChanges();
             }
             await actor.SendMessage("Ruded with: " + rudeEntity.Duration);
+        }
+
+        public override async Task OnUserConnected(IUser user)
+        {
+            user.Name = GetUsername(user.UserId, user.Name);
+            await user.SaveChanges();
+        }
+
+        [Command("rude")]
+        public async Task RudeCommand(IUser user)
+        {
+            var inRudes = GetActiveInRudes(user.UserId);
+            var inKicks = GetKickRudes(user.UserId, inRudes);
+            var i = 1;
+            var mapped = inRudes.Select(r => "Rude #" + i++ + ": " + r.Duration);
+            i = 1;
+            mapped.Concat(inKicks.Select(r => "SelfRude #" + i++ + ": " + r.Duration));
+
+            user.SendMessage(String.Join("<br>", mapped));
+        }
+
+        private string GetUsername(int userId, string name)
+        {
+            var inRudes = GetActiveInRudes(userId).Count();
+            var reudigLevel = GetReudigLevel(userId);
+            return GetUsername(userId, name, inRudes, reudigLevel);
+        }
+
+        private string GetUsername(int userId, string name, int inRudes, int reudigLevel)
+        {
+            if (name.Contains("]"))
+                name = name.Substring(name.IndexOf("]") + 2);
+            // if actor gets punished, it is a completely valid rude on himself
+            //  allowing an increase of inRudes to a value over 3
+            var index = Math.Min(inRudes - 1, 2);
+            name = PREFIXES[index] + " " + name;
+
+            // a user can have a reudigLevel, but only be Ruderer if his first rude has timed out
+            if (inRudes >= PREFIXES.Length && reudigLevel > 0)
+                name.Insert(1, reudigLevel.ToString());
+            return name;
+        }
+
+        private IEnumerable<RudeEntity> GetActiveInRudes(int userId)
+        {
+            return Rudes.Where(r => r.TargetId == userId)
+                // take only rudes, which have not kicked the target
+                .Where(r => r.Duration != null)
+                // and which are still active
+                .Where(r => r.Timestamp + r.Duration >= DateTimeOffset.Now);
+        }
+
+        private IEnumerable<RudeEntity> GetKickRudes(int userId)
+        {
+            var activeInRudes = GetActiveInRudes(userId);
+            return GetKickRudes(userId, activeInRudes);
+        }
+        private IEnumerable<RudeEntity> GetKickRudes(int userId, IEnumerable<RudeEntity> activeInRudes)
+        {
+            var lastActiveTimestamp = activeInRudes.Max(r => r.Timestamp);
+            return Rudes.Where(r => r.TargetId == userId)
+                // count rudes kicking him since last actve rude
+                .Where(r => r.Duration == null)
+                .Where(r => r.Timestamp > lastActiveTimestamp);
+        }
+        private int GetReudigLevel(int userId)
+        {
+            return GetKickRudes(userId).Count();
         }
 
         private class RudeEntity
