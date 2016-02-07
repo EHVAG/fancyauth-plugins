@@ -110,14 +110,13 @@ namespace Fancyauth.Plugins.Builtin
                     // get factors
                     var yearQuery = Rudes.Where(r => r.Timestamp > oneYear);
                     var actorOutRudes = actorOutRudeQuery.Count();
-                    var median = yearQuery.Select(r => new {
-                            r.ActorId,
-                            Value = Math.Log((r.Timestamp - oneYear).TotalMinutes),
-                        }).GroupBy(x => x.ActorId)
-                        .Select(g => g.Sum(t => t.Value))
-                        .Median();
+                    var medianQuery = from r in yearQuery
+                                group Math.Log((r.Timestamp - oneYear).TotalMinutes)
+                                    by r.ActorId into g
+                                    select g.Sum();
+                    var median = medianQuery.Median();
 
-                    double durationFactor = median.Value / actorOutRudes;
+                    double durationFactor = median.Value / Math.Max(actorOutRudes, 1);
                     durationFactor = Math.Max(durationFactor, 0.25);
                     durationFactor = Math.Min(durationFactor, 2);
                     var duration = rng.NextDouble() * (targetInRudes + reudigLevel);
