@@ -64,7 +64,6 @@ namespace Fancyauth.Plugins.Builtin
                 ActorId = actor.UserId,
                 TargetId = target.UserId,
                 ActualTargetId = null,
-                Duration = null,
                 Timestamp = DateTimeOffset.Now,
             };
             bool actorSelfRude;
@@ -116,7 +115,7 @@ namespace Fancyauth.Plugins.Builtin
                                     select g.Sum();
                     var median = medianQuery.Median();
 
-                    double durationFactor = median.Value / Math.Max(actorOutRudes, 1);
+                    double durationFactor = actorOutRudes == 0 ? 2 : median.Value / actorOutRudes;
                     durationFactor = Math.Max(durationFactor, 0.25);
                     durationFactor = Math.Min(durationFactor, 2);
                     var duration = rng.NextDouble() * (targetInRudes + reudigLevel);
