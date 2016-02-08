@@ -153,10 +153,8 @@ namespace Fancyauth.Plugins.Builtin
         {
             var inRudes = GetActiveInRudes(user.UserId);
             var inKicks = GetKickRudes(user.UserId, inRudes);
-            var i = 1;
-            var mapped = inRudes.Select(r => "Rude #" + i++ + ": " + r.Duration);
-            i = 1;
-            mapped.Concat(inKicks.Select(r => "SelfRude #" + i++ + ": " + r.Duration));
+            var mapped = inRudes.Select((r, i) => "Rude #" + i + ": " + r.Duration);
+            mapped = mapped.Concat(inKicks.Select((r, i) => "SelfRude #" + i + ": " + r.Duration));
 
             user.SendMessage(String.Join("<br>", mapped));
         }
