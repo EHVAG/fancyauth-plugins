@@ -130,13 +130,7 @@ namespace Fancyauth.Plugins.Builtin
             }
             else
             {
-                var name = target.Name;
-                if (name.Contains("]"))
-                    name = name.Substring(target.Name.IndexOf("]") + 2);
-                // if actor gets punished, it is a completely valid rude on himself
-                //  allowing an increase of targetInRudes to a value over 2
-                var index = Math.Min(targetInRudes, 2);
-                target.Name = PREFIXES[index] + " " + name;
+                target.Name = GetUsername(target.Name, targetInRudes, GetReudigLevel(target.UserId));
                 await target.SaveChanges();
             }
             await actor.SendMessage("Ruded with: " + rudeEntity.Duration);
@@ -156,17 +150,17 @@ namespace Fancyauth.Plugins.Builtin
             var mapped = inRudes.Select((r, i) => "Rude #" + i + ": " + r.Duration);
             mapped = mapped.Concat(inKicks.Select((r, i) => "SelfRude #" + i + ": " + r.Duration));
 
-            user.SendMessage(String.Join("<br>", mapped));
+            await user.SendMessage(String.Join("<br>", mapped));
         }
 
         private string GetUsername(int userId, string name)
         {
             var inRudes = GetActiveInRudes(userId).Count();
             var reudigLevel = GetReudigLevel(userId);
-            return GetUsername(userId, name, inRudes, reudigLevel);
+            return GetUsername(name, inRudes, reudigLevel);
         }
 
-        private string GetUsername(int userId, string name, int inRudes, int reudigLevel)
+        private string GetUsername(string name, int inRudes, int reudigLevel)
         {
             if (name.Contains("]"))
                 name = name.Substring(name.IndexOf("]") + 2);
