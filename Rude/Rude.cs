@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 using Fancyauth.APIUtil;
 using Fancyauth.API;
 
-namespace Fancyauth.Plugins.Builtin
+namespace Rude
 {
     public static class LinqExtension
     {
