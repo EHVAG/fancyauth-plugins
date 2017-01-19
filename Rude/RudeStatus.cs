@@ -7,7 +7,7 @@ namespace Rude
 {
     public class RudeStatus
     {
-        public Action OnRudeLevelDecrease;
+        public Action OnRudeLevelDecrease { get; set; }
 
         private object RudeLock = new object();
 
@@ -15,30 +15,35 @@ namespace Rude
         private int RudeIteration = 0;
 
 
-        public void RaiseRudeLevel()
+        public void RaiseRudeLevel(TimeSpan length)
         {
             lock (RudeLock)
             {
                 RudeLevel++;
-                RudeIteration++;
 
-                StartRudeDown(RudeIteration);
+                StartRudeDown(length, RudeIteration);
             }
         }
 
-        private async void StartRudeDown(int currentRudeInteration)
+        public void Reset()
         {
-            await Task.Delay(RudePlugin.RudeCooldown);
+            lock(RudeLock)
+            {
+                // Invalidate all old timeouts
+                RudeIteration++;
+                RudeLevel = 0;
+            }
+        }
+
+        private async void StartRudeDown(TimeSpan length, int currentRudeInteration)
+        {
+            await Task.Delay(length);
             lock (RudeLock)
             {
                 if (RudeIteration != currentRudeInteration)
                     return;
 
-                RudeLevel = RudeLevel - 1;
-                RudeIteration++;
-
-                if (RudeLevel > 0)
-                    StartRudeDown(RudeIteration);
+                RudeLevel--;
 
                 OnRudeLevelDecrease();
             }

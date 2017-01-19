@@ -1,37 +1,58 @@
 using System;
 using System.Linq;
-using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Security.Cryptography;
 using Fancyauth.APIUtil;
 using Fancyauth.API;
+using System.Collections.Concurrent;
 
 namespace Rude
 {
     public class RudePlugin : PluginBase
     {
         private readonly string[] Prefixes = { "[Rude] ", "[Ruderer] ", "[Rüdiger] " };
-        public static readonly TimeSpan RudeCooldown = TimeSpan.FromMinutes(30);
+        public const double MinRudeTime = 45;
+        public const double MaxRudeTime = 120;
+        public const double MinRudeActionTimeout = 3;
+        public const double MaxRudeActionTimeout = 18;
 
-        public Dictionary<int, RudeStatus> RudeStatus = new Dictionary<int, RudeStatus>();
+        private ConcurrentDictionary<int, RudeStatus> RudeStatus = new ConcurrentDictionary<int, RudeStatus>();
+        private ConcurrentDictionary<int, RudeStatus> RudeActorStatus = new ConcurrentDictionary<int, RudeStatus>();
+
+        private Random rand = new Random();
 
         [ContextCallback("Rude")]
         public async Task RudeUser(IUser actor, IUserShim targetShim)
         {
+            var target = await targetShim.Load();
+            EnsureRudeStatus(target.UserId);
             EnsureRudeStatus(actor.UserId);
-            var rude = RudeStatus[actor.UserId];
 
-            rude.RaiseRudeLevel();
+            var rude = RudeStatus[target.UserId];
+            var rudeActor = RudeActorStatus[actor.UserId];
+
+            if (rudeActor.RudeLevel > 0)
+            {
+                var actorRude = RudeStatus[actor.UserId];
+
+                // You shouldn't be able to use this to reset yourself
+                if (rudeActor.RudeLevel < Prefixes.Length)
+                    actorRude.RaiseRudeLevel(RandomTimespan(MinRudeTime, MaxRudeTime));
+
+                return;
+            }
+
+            rudeActor.RaiseRudeLevel(RandomTimespan(MinRudeActionTimeout, MaxRudeActionTimeout));
+            rude.RaiseRudeLevel(RandomTimespan(MinRudeTime, MaxRudeTime));
 
             if (rude.RudeLevel > Prefixes.Length)
             {
-                RudeStatus.Remove(actor.UserId);
-                await actor.Kick("You have been too rude.");
+                rude.Reset();
+                await target.Kick("You have been too rude.");
             }
             else
             {
-                actor.Name = GetUserName(actor);
-                await actor.SaveChanges();
+                target.Name = GetUserName(target);
+                await target.SaveChanges();
             }
         }
 
@@ -41,12 +62,11 @@ namespace Rude
             await user.SaveChanges();
         }
 
-
-
         private void EnsureRudeStatus(int userId)
         {
             if (!RudeStatus.ContainsKey(userId))
-                RudeStatus[userId] = new RudeStatus
+            {
+                RudeStatus.TryAdd(userId, new RudeStatus
                 {
                     OnRudeLevelDecrease = async () =>
                     {
@@ -58,7 +78,16 @@ namespace Rude
                         user.Name = GetUserName(user);
                         await user.SaveChanges();
                     }
-                };
+                });
+            }
+
+            if (!RudeActorStatus.ContainsKey(userId))
+            {
+                RudeActorStatus.TryAdd(userId, new RudeStatus
+                {
+                    OnRudeLevelDecrease = () => { }
+                });
+            }
         }
 
         private string GetUserName(IUser user)
@@ -79,6 +108,11 @@ namespace Rude
 
 
             return name;
+        }
+
+        private TimeSpan RandomTimespan(double minMinues, double maxMinutes)
+        {
+            return TimeSpan.FromMinutes(minMinues + rand.NextDouble() * (maxMinutes - minMinues));
         }
     }
 }
